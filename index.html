@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang='en'>
+<head>
+  <title>Augmented Socket.IO Chat</title>
+  <meta charset='utf-8' />
+  <meta name='viewport' content='width=device-width,initial-scale=1.0' />
+  <meta http-equiv='X-UA-Compatible' content='IE=edge,chrome=1' />
+  <link rel='stylesheet' href='/stylesheets/style.css' />
+  <!--[if lt IE 9]>
+    <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+</head>
+<body>
+<div id='chat'>
+  <ul id='messages'></ul>
+  <form action=''>
+    <input id='m' autocomplete='off' />
+    <button>Send</button>
+  </form>  
+</div>
+<div id='sidebar'>
+  <div id='occupants'>
+    <header><h2>Occupants</h2></header>
+    <ul id='occupant-list'></ul>
+  </div>
+  <div class='help'>
+    <header><h4>Information</h4></header>
+    <ul>
+      <li><pre>Click on user to start private message session</pre></li>
+      <li><pre>Click on yourself to end private message session</pre></li>
+    </ul>
+  </div>
+</div>
+<script src='/socket.io/socket.io.js'></script>
+<script src='http://code.jquery.com/jquery.js'></script>
+<script>
+$(document).ready(function() {
+  
+  // No specification of any URL is needed with
+  // instantiation of io() because it defaults to
+  // trying to connect to the host that serves the page.
+  var socket = io();
+  var username;
+  var privateMessage = false, privateUsername;
+  var $msgs = $('#messages');
+    
+  /*************** Helper Functions ************************/
+  
+  function showMessage(data) {
+    var $username = $('<span class="name">').text(data.username + ': ');
+    var text = document.createTextNode(data.message);
+    $msgs.append($('<li>').append($username).append(text));
+    scrollAndFocus();
+  }
+  
+  function scrollAndFocus() {
+    $msgs.scrollTop($msgs.prop('scrollHeight'));
+    $('#m').focus();
+  }
+  
+  function showSystemMessage(message) {
+    var html = $('<li>').html('<i>' + message + '</i>');
+    $msgs.append(html);
+    scrollAndFocus();
+  }
+  
+  /************************ Page Event Listeners ***********************/
+  
+  $('form').submit(function() {
+    var message = $('#m').val();
+    showMessage({username: username, message: message});
+    if(privateMessage) {
+      socket.emit('private message', {
+        message: message,
+        username: privateUsername
+      });
+    } else {
+      socket.emit('chat message', message);  
+    }
+    
+    $('#m').val('');
+    return false;
+  });
+  
+  $('#occupant-list').on('click', 'li', function() {
+    var name = $(this).text(), html, text;
+    if(name != username) {
+      privateUsername = name;
+      privateMessage  = true;        
+      text = 'Entered private conversation with ' + privateUsername;  
+      html = $('<li>').append($('<i>').text(text));
+      $msgs.append(html);
+    } else if(name == username && privateMessage ) {
+      text = 'Exited private conversation with ' + privateUsername;
+      html = $('<li>').append($('<i>').text(text));
+      $msgs.append(html);
+      privateMessage = false;
+      privateUsername = '';
+    }
+    
+  });
+  
+  /************************** Socket Event Listeners *********************/
+  
+  socket.on('chat message', function(data) {
+    showMessage(data);
+  });
+  
+  socket.on('private message', function(data) {
+	  data.username += '(whisper)';
+    showMessage(data);
+  });
+  
+  socket.on('join', function(message) {
+    showSystemMessage(message);
+  });
+  
+  socket.on('occupants', function(data) {
+    $('#occupant-list').empty();
+    for(var idx in data.usernames) {
+      $('#occupant-list').append($('<li>').text(data.usernames[idx]));
+    }
+  });
+  
+  socket.on('departed', function(data) {
+    showSystemMessage(data.username + ' has departed.')
+  });
+  
+  socket.on('nameResult', function(result) {
+    var message;
+    if(result.success) {
+      username = result.name;
+      message  = 'You are now known as ' + result.name +'.';
+    } else {
+      message  = result.message;
+    }
+    showSystemMessage(message);
+  });
+});
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -2,6 +2,7 @@ var express  = require('express');
 var app      = express();
 var http     = require('http');
 var socketio = require('socket.io');
+var port     = process.env.PORT || 5000;
 
 // During development, socket.io serves the client automatically for us.
 // server is an EventEmitter with many available
@@ -75,6 +76,6 @@ function assignGuestName(socket) {
 }
 
 /**************** Start Server ******************/
-server.listen(3000, function() {
-  console.log('Server listening on port 3000');
+server.listen(port, function() {
+  console.log('Server listening on port %s', port);
 });
